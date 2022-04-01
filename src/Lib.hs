@@ -1,6 +1,16 @@
 module Lib
-    ( someFunc
-    ) where
+  ( State,
+    initState,
+    interpret,
+  )
+where
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+type State = String
+
+initState :: State
+initState = ""
+
+interpret :: State -> IO (Maybe State)
+interpret state = do
+  putStrLn state
+  Just <$> getLine
