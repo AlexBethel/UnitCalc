@@ -27,3 +27,35 @@ passed), the program gives an interactive interpreter.
 * `--version`, `-v`: Print UnitCalc's version, then exit immediately.
 
 ## Language
+
+The programming language implemented by UnitCalc is intended to be
+relatively minimal, as its primary purpose is for performing quick
+calculations rather than doing complicated data analysis, user
+interaction, or networking.
+
+The language is entirely expression-based, meaning the only primitive
+action that a script (or the user) can perform is evaluating an
+expression; at the interactive prompt, the interpreter prints out the
+value of every expression after the user types it. Also, immediately
+after an expression is evaluated, its result is automatically saved to
+the special value `it`, which can be referred to by the following
+expression:
+```
+> 2 + 2
+4
+> it + 5
+9
+>
+```
+
+### Variable types
+
+TODO
+
+### Predefined functions
+
+TODO
+
+### Predefined units
+
+TODO
