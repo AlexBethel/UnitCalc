@@ -86,7 +86,7 @@ data Expression
     -- otherwise optionally evaluate another (else) condition.
     IfElse Expression Expression (Maybe Expression)
   | -- Evaluate an expression, then evaluate another.
-    Sequence Expression Expression
+    Sequence Expression (Maybe Expression)
   deriving (Show)
 
 data Literal
@@ -315,11 +315,15 @@ expAndOr =
 
 -- Parser for a; b.
 expSequence :: Parser Expression -> Parser Expression
-expSequence =
-  parseInfixes
-    [ Sequence <$ op ';'
-    ]
-    AssocLeft
+expSequence exp = do
+  lhs <- exp
+  semi <- optionMaybe $ op ';'
+  case semi of
+    Just _ -> do
+      rhs <- optionMaybe $ expSequence exp
+      pure $ Sequence lhs rhs
+    Nothing -> do
+      pure lhs
 
 -- The main expression parser.
 parseExpression :: Parser Expression
