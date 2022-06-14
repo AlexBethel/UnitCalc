@@ -26,12 +26,15 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Parser
   other-modules:
       Paths_UnitCalc
   hs-source-dirs:
       src
   build-depends:
       base >=4.7 && <5
+    , containers
+    , parsec
   default-language: Haskell2010
 
 executable UnitCalc-exe
@@ -44,6 +47,8 @@ executable UnitCalc-exe
   build-depends:
       UnitCalc
     , base >=4.7 && <5
+    , containers
+    , parsec
   default-language: Haskell2010
 
 test-suite UnitCalc-test
@@ -57,4 +62,6 @@ test-suite UnitCalc-test
   build-depends:
       UnitCalc
     , base >=4.7 && <5
+    , containers
+    , parsec
   default-language: Haskell2010
