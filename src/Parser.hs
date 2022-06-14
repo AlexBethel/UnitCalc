@@ -6,9 +6,7 @@ module Parser
   )
 where
 
-import Control.Applicative (liftA2)
 import Control.Monad (void)
-import Data.Functor (($>))
 import Text.Parsec
   ( alphaNum,
     anyChar,
@@ -30,7 +28,6 @@ import Text.Parsec
     (<|>),
   )
 import Text.Parsec.String (Parser)
-import Text.Read (Lexeme (Char), readMaybe)
 
 parseCommand :: String -> String
 parseCommand = id
