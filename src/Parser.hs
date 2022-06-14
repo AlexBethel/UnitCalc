@@ -10,15 +10,13 @@ import Control.Applicative (liftA2)
 import Control.Monad (void)
 import Data.Functor (($>))
 import Text.Parsec
-  ( Parsec,
-    alphaNum,
+  ( alphaNum,
     anyChar,
     between,
     char,
     choice,
     digit,
     letter,
-    lookAhead,
     many,
     many1,
     noneOf,
@@ -28,7 +26,6 @@ import Text.Parsec
     space,
     string,
     try,
-    unexpected,
     (<?>),
     (<|>),
   )
@@ -59,6 +56,22 @@ data Expression
     Mod Expression Expression
   | -- One expression raised to the power of another.
     Pow Expression Expression
+  | -- Equals comparison.
+    Equ Expression Expression
+  | -- Not equal comparison.
+    Neq Expression Expression
+  | -- Less than comparison.
+    Lt Expression Expression
+  | -- Less than or equals comparison.
+    Leq Expression Expression
+  | -- Greater than comparison.
+    Gt Expression Expression
+  | -- Greater than or equals comparison.
+    Geq Expression Expression
+  | -- Boolean AND operator.
+    And Expression Expression
+  | -- Boolean OR operator.
+    Or Expression Expression
   | -- Unary minus operator.
     Minus Expression
   | -- Unary plus operator, which is equivalent to absolute value.
@@ -276,6 +289,33 @@ expPow =
     ]
     AssocRight
 
+-- Parser for comparisons.
+expCompare :: Parser Expression -> Parser Expression
+expCompare =
+  parseInfixes
+    ( map
+        -- Some expressions are substrings of each other, meaning we
+        -- need to look ahead by one character to get this right.
+        try
+        [ Equ <$ word "==",
+          Neq <$ word "!=",
+          Lt <$ word "<",
+          Leq <$ word "<=",
+          Gt <$ word ">",
+          Geq <$ word ">="
+        ]
+    )
+    AssocLeft
+
+-- Parser for binary boolean operators.
+expAndOr :: Parser Expression -> Parser Expression
+expAndOr =
+  parseInfixes
+    [ And <$ op '&',
+      Or <$ op '|'
+    ]
+    AssocLeft
+
 -- Parser for a; b.
 expSequence :: Parser Expression -> Parser Expression
 expSequence =
@@ -296,5 +336,7 @@ parseExpression =
       expPlusMinus,
       expMulDiv,
       expAddSub,
+      expCompare,
+      expAndOr,
       expSequence
     ]
