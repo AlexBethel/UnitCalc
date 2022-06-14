@@ -2,6 +2,7 @@ module Parser
   ( parseCommand,
     Command,
     parseExpression,
+    Expression,
   )
 where
 
@@ -21,6 +22,7 @@ import Text.Parsec
     many,
     many1,
     noneOf,
+    optionMaybe,
     sepBy,
     skipMany,
     space,
@@ -70,6 +72,11 @@ data Expression
     Variable String
   | -- A literal value.
     Literal Literal
+  | -- Evaluate an expression if another expression is truthy;
+    -- otherwise optionally evaluate another (else) condition.
+    IfElse Expression Expression (Maybe Expression)
+  | -- Evaluate an expression, then evaluate another.
+    Sequence Expression Expression
   deriving (Show)
 
 data Literal
@@ -81,6 +88,13 @@ data Literal
     -- the individual digits.
     DecLiteral Double
   deriving (Show)
+
+reservedWords :: [String]
+reservedWords =
+  [ "if",
+    "then",
+    "else"
+  ]
 
 -- Basic Parsec setup
 lexeme :: Parser a -> Parser a
@@ -133,10 +147,19 @@ parseLiteral =
 
 -- Parse a variable name.
 parseVariable :: Parser Expression
-parseVariable = Variable <$> lexeme (liftA2 (:) first rest) <?> "variable name"
-  where
-    first = letter
-    rest = many alphaNum
+parseVariable =
+  Variable
+    <$> lexeme
+      -- We use `try` here to prevent reading reserved words.
+      ( try $ do
+          first <- letter
+          rest <- many alphaNum
+          let word = first : rest
+          if word `elem` reservedWords
+            then fail ("got reserved word `" ++ word ++ "`")
+            else pure word
+      )
+      <?> "variable name"
 
 -- An operator, i.e., a single character optionally surrounded by
 -- whitespace.
@@ -151,6 +174,18 @@ parseTuple =
       (op '(')
       (op ')')
       (parseExpression `sepBy` op ',')
+
+-- Parse an `if-then-else` expression.
+parseIfElse :: Parser Expression
+parseIfElse = do
+  _ <- word "if"
+  condition <- parseExpression
+  _ <- word "then"
+  thenExp <- parseExpression
+  elseExp <- optionMaybe $ do
+    _ <- word "else"
+    parseExpression
+  pure $ IfElse condition thenExp elseExp
 
 data Assoc = AssocLeft | AssocRight
 
@@ -172,6 +207,7 @@ parseInfixes infixes assoc element = do
   pure $
     ( case assoc of
         AssocLeft -> foldl (\l (operator, r) -> operator l r)
+        -- BUG: AssocRight generates wildly incorrect results
         AssocRight -> foldr (\(operator, r) l -> operator l r)
     )
       first
@@ -195,7 +231,7 @@ parsePrefixes prefixes element = do
 -- xyz)); tuples are used to implement parentheses so arbitrary
 -- subexpressions can be at any position in an expression.
 expBase :: Parser Expression
-expBase = parseLiteral <|> parseVariable <|> parseTuple
+expBase = parseLiteral <|> parseTuple <|> parseVariable <|> parseIfElse
 
 -- Parser for a b (function application).
 expCall :: Parser Expression -> Parser Expression
@@ -240,6 +276,14 @@ expPow =
     ]
     AssocRight
 
+-- Parser for a; b.
+expSequence :: Parser Expression -> Parser Expression
+expSequence =
+  parseInfixes
+    [ Sequence <$ op ';'
+    ]
+    AssocLeft
+
 -- The main expression parser.
 parseExpression :: Parser Expression
 parseExpression =
@@ -251,5 +295,6 @@ parseExpression =
       expPow,
       expPlusMinus,
       expMulDiv,
-      expAddSub
+      expAddSub,
+      expSequence
     ]
