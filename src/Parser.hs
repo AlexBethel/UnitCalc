@@ -82,6 +82,9 @@ data Expression
     Variable String
   | -- A literal value.
     Literal Literal
+  | -- A lambda that takes a list of arguments and returns an
+    -- expression.
+    Lambda Pattern Expression
   | -- Evaluate an expression if another expression is truthy;
     -- otherwise optionally evaluate another (else) condition.
     IfElse Expression Expression (Maybe Expression)
@@ -97,6 +100,12 @@ data Literal
   | -- TODO: Should that be a double? It might be better to represent
     -- the individual digits.
     DecLiteral Double
+  deriving (Show)
+
+-- Patterns for binding in lambdas and assignments.
+data Pattern
+  = VariablePat String
+  | TuplePat [Pattern]
   deriving (Show)
 
 reservedWords :: [String]
@@ -156,20 +165,23 @@ parseLiteral =
       ]
 
 -- Parse a variable name.
+parseVariableName :: Parser String
+parseVariableName =
+  lexeme
+    -- We use `try` here to prevent reading reserved words.
+    ( try $ do
+        first <- letter
+        rest <- many alphaNum
+        let word = first : rest
+        if word `elem` reservedWords
+          then fail ("got reserved word `" ++ word ++ "`")
+          else pure word
+    )
+    <?> "variable name"
+
+-- Parse a variable literal.
 parseVariable :: Parser Expression
-parseVariable =
-  Variable
-    <$> lexeme
-      -- We use `try` here to prevent reading reserved words.
-      ( try $ do
-          first <- letter
-          rest <- many alphaNum
-          let word = first : rest
-          if word `elem` reservedWords
-            then fail ("got reserved word `" ++ word ++ "`")
-            else pure word
-      )
-      <?> "variable name"
+parseVariable = Variable <$> parseVariableName
 
 -- An operator, i.e., a single character optionally surrounded by
 -- whitespace.
@@ -196,6 +208,28 @@ parseIfElse = do
     _ <- word "else"
     parseExpression
   pure $ IfElse condition thenExp elseExp
+
+-- Parse a lambda expression.
+parseLambda :: Parser Expression
+parseLambda = do
+  _ <- op '\\'
+  pat <- parsePattern
+  _ <- word "->"
+  Lambda pat <$> parseExpression
+
+parseVariablePat :: Parser Pattern
+parseVariablePat = VariablePat <$> parseVariableName
+
+parseTuplePat :: Parser Pattern
+parseTuplePat =
+  TuplePat
+    <$> between
+      (op '(')
+      (op ')')
+      (parsePattern `sepBy` op ',')
+
+parsePattern :: Parser Pattern
+parsePattern = parseVariablePat <|> parseTuplePat
 
 data Assoc = AssocLeft | AssocRight
 
@@ -241,7 +275,14 @@ parsePrefixes prefixes element = do
 -- xyz)); tuples are used to implement parentheses so arbitrary
 -- subexpressions can be at any position in an expression.
 expBase :: Parser Expression
-expBase = parseLiteral <|> parseTuple <|> parseVariable <|> parseIfElse
+expBase =
+  choice
+    [ parseLiteral,
+      parseTuple,
+      parseVariable,
+      parseIfElse,
+      parseLambda
+    ]
 
 -- Parser for a b (function application).
 expCall :: Parser Expression -> Parser Expression
