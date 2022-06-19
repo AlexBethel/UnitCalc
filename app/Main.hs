@@ -1,7 +1,7 @@
 module Main where
 
 import Control.Monad.State (runStateT)
-import Lib (State, initState, interpret)
+import Lib (VarState, initState, interpret)
 
 main :: IO ()
 main = do
@@ -10,7 +10,7 @@ main = do
 
 -- Run a read-eval-print loop in the language, with the given initial
 -- state.
-repl :: State -> IO ()
+repl :: VarState -> IO ()
 repl s = do
   ((), nextState) <- runStateT interpret s
   repl nextState

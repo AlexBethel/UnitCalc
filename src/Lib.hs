@@ -1,5 +1,5 @@
 module Lib
-  ( State,
+  ( VarState,
     initState,
     interpret,
     parseExpression,
@@ -8,12 +8,12 @@ where
 
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.State (StateT)
-import Eval (State, evalExpression, initState)
+import Eval (VarState, evalExpression, initState)
 import Parser
 import System.IO (hFlush, stdout)
 import Text.Parsec (eof, runParser)
 
-interpret :: StateT State IO ()
+interpret :: StateT VarState IO ()
 interpret = do
   text <- liftIO $ do
     putStr "> "

@@ -5,7 +5,7 @@
 module Eval
   ( evalExpression,
     Value,
-    State (State, variables),
+    VarState (VarState, variables),
     initState,
   )
 where
@@ -54,11 +54,11 @@ import Parser
   )
 
 -- The state of the interpreter between any two statements.
-newtype State = State {variables :: Map String Int}
+newtype VarState = VarState {variables :: Map String Int}
 
 -- The initial state of the interpreter, immediately after startup.
-initState :: State
-initState = State {variables = empty}
+initState :: VarState
+initState = VarState {variables = empty}
 
 -- A value, produced from evaluating an expression.
 data Value
@@ -139,7 +139,7 @@ instance Fractional Value where
 -- Evaluates an expression, which may have side effects on the program
 -- state (hence the StateT), or arbitrary side effects on the real
 -- world (hence the IO).
-evalExpression :: Expression -> StateT State IO Value
+evalExpression :: Expression -> StateT VarState IO Value
 evalExpression e = case e of
   Add l r -> evalBinop (+) l r
   Sub l r -> evalBinop (-) l r
@@ -168,12 +168,12 @@ evalExpression e = case e of
   IfElse condition thenClause elseClause -> undefined
   Sequence l r -> undefined
 
--- Evaluate a pure binary operation in the `StateT State IO` monad.
+-- Evaluate a pure binary operation in the `StateT VarState IO` monad.
 evalBinop ::
   (Value -> Value -> Value) ->
   Expression ->
   Expression ->
-  StateT State IO Value
+  StateT VarState IO Value
 evalBinop op l r = do
   l <- evalExpression l
   r <- evalExpression r
