@@ -2,7 +2,40 @@ module Parser
   ( parseCommand,
     Command,
     parseExpression,
-    Expression,
+    Expression
+      ( Add,
+        Sub,
+        Mul,
+        Div,
+        Mod,
+        Pow,
+        Equ,
+        Neq,
+        Lt,
+        Leq,
+        Gt,
+        Geq,
+        And,
+        Or,
+        Minus,
+        Plus,
+        Call,
+        Tuple,
+        Variable,
+        Literal,
+        Lambda,
+        IfElse,
+        Sequence
+      ),
+    Literal
+      ( StrLiteral,
+        IntLiteral,
+        DecLiteral
+      ),
+    Pattern
+      ( VariablePat,
+        TuplePat
+      ),
   )
 where
 
@@ -96,7 +129,7 @@ data Literal
   = -- Literal string enclosed in double quotes.
     StrLiteral String
   | -- Literal integer, which is a string of one or more digits.
-    IntLiteral Int
+    IntLiteral Integer
   | -- TODO: Should that be a double? It might be better to represent
     -- the individual digits.
     DecLiteral Double

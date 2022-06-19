@@ -1,22 +1,16 @@
 module Main where
 
-import Data.Foldable (forM_)
-import Lib (State, initState, interpret, parseExpression)
-import Text.Parsec (runParser, eof)
-import System.IO (hFlush, stdout)
+import Control.Monad.State (runStateT)
+import Lib (State, initState, interpret)
 
 main :: IO ()
 main = do
-  putStr "Text to parse: "
-  hFlush stdout
-  text <- getLine
-  let result = runParser (parseExpression <* eof) () "<stdin>" text
-  print result
-  main
+  putStrLn "UnitCalc v0.1.0"
+  repl initState
 
 -- Run a read-eval-print loop in the language, with the given initial
 -- state.
 repl :: State -> IO ()
 repl s = do
-  nextState <- interpret s
-  forM_ nextState repl
+  ((), nextState) <- runStateT interpret s
+  repl nextState
