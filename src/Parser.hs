@@ -229,6 +229,7 @@ parseTuple =
       (op '(')
       (op ')')
       (parseExpression `sepBy` op ',')
+      <?> "parentheses"
 
 -- Parse an `if-then-else` expression.
 parseIfElse :: Parser Expression
@@ -244,11 +245,14 @@ parseIfElse = do
 
 -- Parse a lambda expression.
 parseLambda :: Parser Expression
-parseLambda = do
-  _ <- op '\\'
-  pat <- parsePattern
-  _ <- word "->"
-  Lambda pat <$> parseExpression
+parseLambda =
+  ( do
+      _ <- op '\\'
+      pat <- parsePattern
+      _ <- word "->"
+      Lambda pat <$> parseExpression
+  )
+    <?> "lambda"
 
 parseVariablePat :: Parser Pattern
 parseVariablePat = VariablePat <$> parseVariableName
