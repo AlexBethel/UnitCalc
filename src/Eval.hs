@@ -1,3 +1,4 @@
+
 -- Expression evaluation functions.
 
 -- TODO: Deal with all `undefined`s here; the final program should
@@ -54,7 +55,7 @@ import Parser
   )
 
 -- The state of the interpreter between any two statements.
-newtype VarState = VarState {variables :: Map String Int}
+newtype VarState = VarState {variables :: Map String Value}
 
 -- The initial state of the interpreter, immediately after startup.
 initState :: VarState
@@ -96,59 +97,19 @@ toDouble (BoolVal b) = undefined
 toDouble (StringVal s) = undefined
 toDouble (LambdaVal pat body) = undefined
 
--- We'll probably end up abandoning this, since `Num` requires that
--- all operations are infallible, whereas in our program some
--- operations are fallible.
-instance Num Value where
-  (IntVal l) + (IntVal r) = IntVal (l + r)
-  l + r = DoubleVal (toDouble l + toDouble r)
-
-  (IntVal l) * (IntVal r) = IntVal (l * r)
-  l * r = DoubleVal (toDouble l * toDouble r)
-
-  abs (IntVal n) = IntVal (abs n)
-  abs (DoubleVal n) = DoubleVal (abs n)
-  abs (BoolVal b) = undefined
-  abs (StringVal s) = undefined
-  abs (LambdaVal pat body) = undefined
-
-  signum (IntVal n) = IntVal (signum n)
-  signum (DoubleVal n) = DoubleVal (signum n)
-  signum (BoolVal b) = undefined
-  signum (StringVal s) = undefined
-  signum (LambdaVal pat body) = undefined
-
-  fromInteger = IntVal
-
-  negate (IntVal n) = IntVal (-n)
-  negate (DoubleVal n) = DoubleVal (-n)
-  negate (BoolVal b) = undefined
-  negate (StringVal s) = undefined
-  negate (LambdaVal pat body) = LambdaVal pat (Minus body)
-
--- See comment on `instance Num Value`
-instance Fractional Value where
-  fromRational rat = fromInteger (numerator rat) / fromInteger (denominator rat)
-
-  recip (IntVal n) = DoubleVal (recip (fromInteger n))
-  recip (DoubleVal n) = DoubleVal (recip n)
-  recip (BoolVal b) = undefined
-  recip (StringVal s) = undefined
-  recip (LambdaVal pat body) = undefined
-
 -- Evaluates an expression, which may have side effects on the program
 -- state (hence the StateT), or arbitrary side effects on the real
 -- world (hence the IO).
 evalExpression :: Expression -> StateT VarState IO Value
 evalExpression e = case e of
-  Add l r -> evalBinop (+) l r
-  Sub l r -> evalBinop (-) l r
-  Mul l r -> evalBinop (*) l r
-  Div l r -> evalBinop (/) l r
+  Add l r -> undefined
+  Sub l r -> undefined
+  Mul l r -> undefined
+  Div l r -> undefined
   Mod l r -> undefined
   Pow l r -> undefined
-  Equ l r -> evalBinop (\l r -> BoolVal $ l == r) l r
-  Neq l r -> evalBinop (\l r -> BoolVal $ l /= r) l r
+  Equ l r -> undefined
+  Neq l r -> undefined
   Lt l r -> undefined
   Leq l r -> undefined
   Gt l r -> undefined
@@ -156,8 +117,8 @@ evalExpression e = case e of
   And l r -> undefined
   Or l r -> undefined
   Minus e -> undefined
-  Plus e -> undefined
-  Call fn arg -> undefined
+  Plus e -> evalExpression e
+  Call fn arg -> callFn fn arg
   Tuple elems -> undefined
   Variable name -> undefined
   Literal lit -> case lit of
@@ -178,3 +139,14 @@ evalBinop op l r = do
   l <- evalExpression l
   r <- evalExpression r
   pure $ op l r
+
+callFn :: Expression -> Expression -> StateT VarState IO Value
+callFn l r = do
+  fn <- evalExpression l
+  arg <- evalExpression r
+  case fn of
+    IntVal _ -> undefined
+    DoubleVal _ -> undefined
+    StringVal _ -> undefined
+    BoolVal _ -> undefined
+    LambdaVal _ _ -> undefined
