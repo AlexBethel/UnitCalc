@@ -16,7 +16,7 @@ import Control.Monad.State
     StateT (runStateT),
   )
 import Control.Monad.Trans (lift)
-import Control.Monad.Trans.Except (ExceptT, throwE)
+import Control.Monad.Trans.Except (ExceptT, catchE, throwE)
 import Data.IORef (IORef, readIORef, writeIORef)
 import Data.Map.Strict (Map, empty, lookup)
 import Data.Ratio (denominator, numerator)
@@ -123,6 +123,14 @@ interpSetVar name value = do
   ref <- interpGetRef name
   interpRun $ writeIORef ref value
 
+-- Catch an exception in the Interp monad.
+interpCatch :: Interp a -> Interp (Either Value a)
+interpCatch from = catchE (Right <$> from) (pure . Left)
+
+-- Error for unimplemented functionality.
+unimplemented :: Interp a
+unimplemented = throwE (StringVal "not yet implemented")
+
 -- Let's define that lambdas are never equal to one another; this
 -- makes a lot of things much simpler, and doesn't often have any real
 -- impact on the power of the language.
@@ -136,44 +144,44 @@ instance Eq Value where
 
 -- Conversions to doubles. This is used to promote values for doing
 -- arithmetic.
-toDouble :: Value -> Double
-toDouble (IntVal n) = fromInteger n
-toDouble (DoubleVal n) = n
-toDouble (BoolVal b) = undefined
-toDouble (StringVal s) = undefined
-toDouble (LambdaVal pat body) = undefined
+toDouble :: Value -> Interp Double
+toDouble (IntVal n) = pure $ fromInteger n
+toDouble (DoubleVal n) = pure n
+toDouble (BoolVal b) = unimplemented
+toDouble (StringVal s) = unimplemented
+toDouble (LambdaVal pat body) = unimplemented
 
 -- Evaluates an expression, which may have side effects on the program
 -- state (hence the StateT), or arbitrary side effects on the real
 -- world (hence the IO).
 evalExpression :: Expression -> Interp Value
 evalExpression e = case e of
-  Add l r -> throwE (StringVal "unimplemented")
-  Sub l r -> undefined
-  Mul l r -> undefined
-  Div l r -> undefined
-  Mod l r -> undefined
-  Pow l r -> undefined
-  Equ l r -> undefined
-  Neq l r -> undefined
-  Lt l r -> undefined
-  Leq l r -> undefined
-  Gt l r -> undefined
-  Geq l r -> undefined
-  And l r -> undefined
-  Or l r -> undefined
-  Minus e -> undefined
+  Add l r -> unimplemented
+  Sub l r -> unimplemented
+  Mul l r -> unimplemented
+  Div l r -> unimplemented
+  Mod l r -> unimplemented
+  Pow l r -> unimplemented
+  Equ l r -> unimplemented
+  Neq l r -> unimplemented
+  Lt l r -> unimplemented
+  Leq l r -> unimplemented
+  Gt l r -> unimplemented
+  Geq l r -> unimplemented
+  And l r -> unimplemented
+  Or l r -> unimplemented
+  Minus e -> unimplemented
   Plus e -> evalExpression e
   Call fn arg -> callFn fn arg
-  Tuple elems -> undefined
-  Variable name -> undefined
+  Tuple elems -> unimplemented
+  Variable name -> unimplemented
   Literal lit -> case lit of
     StrLiteral x -> pure (StringVal x)
     IntLiteral x -> pure (IntVal x)
     DecLiteral x -> pure (DoubleVal x)
-  Lambda pat body -> undefined
-  IfElse condition thenClause elseClause -> undefined
-  Sequence l r -> undefined
+  Lambda pat body -> unimplemented
+  IfElse condition thenClause elseClause -> unimplemented
+  Sequence l r -> unimplemented
 
 -- Evaluate a pure binary operation in the `StateT VarState IO` monad.
 evalBinop ::
@@ -191,8 +199,8 @@ callFn l r = do
   fn <- evalExpression l
   arg <- evalExpression r
   case fn of
-    IntVal _ -> undefined
-    DoubleVal _ -> undefined
-    StringVal _ -> undefined
-    BoolVal _ -> undefined
-    LambdaVal _ _ -> undefined
+    IntVal _ -> unimplemented
+    DoubleVal _ -> unimplemented
+    StringVal _ -> unimplemented
+    BoolVal _ -> unimplemented
+    LambdaVal _ _ -> unimplemented
