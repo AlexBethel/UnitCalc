@@ -37,6 +37,7 @@ library
     , containers
     , mtl
     , parsec
+    , transformers
   default-language: Haskell2010
 
 executable UnitCalc-exe
@@ -52,6 +53,7 @@ executable UnitCalc-exe
     , containers
     , mtl
     , parsec
+    , transformers
   default-language: Haskell2010
 
 test-suite UnitCalc-test
@@ -68,4 +70,5 @@ test-suite UnitCalc-test
     , containers
     , mtl
     , parsec
+    , transformers
   default-language: Haskell2010

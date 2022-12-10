@@ -168,6 +168,7 @@ parseString =
   where
     stringChar = noneOf ['\\', '\"'] <|> char '\\' *> (backslash <$> anyChar)
     backslash c = case c of
+      'r' -> '\r'
       'n' -> '\n'
       't' -> '\t'
       c -> c
@@ -180,8 +181,7 @@ parseNumber =
         leading <- many1 digit
         choice
           [ do
-              _ <- char '.'
-              trailing <- many1 digit
+              trailing <- char '.' *> many1 digit
               pure $ DecLiteral (read (leading ++ "." ++ trailing)),
             pure $ IntLiteral (read leading)
           ]
@@ -203,9 +203,8 @@ parseVariableName =
   lexeme
     -- We use `try` here to prevent reading reserved words.
     ( try $ do
-        first <- letter
-        rest <- many alphaNum
-        let word = first : rest
+        -- Variable names have to start with a letter.
+        word <- (:) <$> letter <*> many alphaNum
         if word `elem` reservedWords
           then fail ("got reserved word `" ++ word ++ "`")
           else pure word
@@ -224,46 +223,45 @@ op = lexeme . void . char
 -- Parse a tuple of zero or more expressions.
 parseTuple :: Parser Expression
 parseTuple =
-  Tuple
-    <$> between
-      (op '(')
-      (op ')')
-      (parseExpression `sepBy` op ',')
-      <?> "parentheses"
+  ( Tuple
+      <$> between
+        (op '(')
+        (op ')')
+        (parseExpression `sepBy` op ',')
+  )
+    <?> "parentheses"
 
 -- Parse an `if-then-else` expression.
 parseIfElse :: Parser Expression
-parseIfElse = do
-  _ <- word "if"
-  condition <- parseExpression
-  _ <- word "then"
-  thenExp <- parseExpression
-  elseExp <- optionMaybe $ do
-    _ <- word "else"
-    parseExpression
-  pure $ IfElse condition thenExp elseExp
+parseIfElse =
+  ( IfElse
+      <$> (word "if" *> parseExpression)
+      <*> (word "then" *> parseExpression)
+      <*> optionMaybe (word "else" *> parseExpression)
+  )
+    <?> "if expression"
 
 -- Parse a lambda expression.
 parseLambda :: Parser Expression
 parseLambda =
-  ( do
-      _ <- op '\\'
-      pat <- parsePattern
-      _ <- word "->"
-      Lambda pat <$> parseExpression
+  ( Lambda
+      <$> (op '\\' *> parsePattern)
+      <*> (word "->" *> parseExpression)
   )
-    <?> "lambda"
+    <?> "lambda expression"
 
 parseVariablePat :: Parser Pattern
 parseVariablePat = VariablePat <$> parseVariableName
 
 parseTuplePat :: Parser Pattern
 parseTuplePat =
-  TuplePat
-    <$> between
-      (op '(')
-      (op ')')
-      (parsePattern `sepBy` op ',')
+  ( TuplePat
+      <$> between
+        (op '(')
+        (op ')')
+        (parsePattern `sepBy` op ',')
+  )
+    <?> "parentheses"
 
 parsePattern :: Parser Pattern
 parsePattern = parseVariablePat <|> parseTuplePat

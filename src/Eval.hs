@@ -1,4 +1,3 @@
-
 -- Expression evaluation functions.
 
 -- TODO: Deal with all `undefined`s here; the final program should
@@ -8,6 +7,7 @@ module Eval
     Value,
     VarState (VarState, variables),
     initState,
+    Interp,
   )
 where
 
@@ -15,7 +15,10 @@ import Control.Monad.State
   ( MonadState (get, put, state),
     StateT (runStateT),
   )
-import Data.Map.Strict (Map, empty)
+import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Except (ExceptT, throwE)
+import Data.IORef (IORef, readIORef, writeIORef)
+import Data.Map.Strict (Map, empty, lookup)
 import Data.Ratio (denominator, numerator)
 import Parser
   ( Expression
@@ -53,9 +56,10 @@ import Parser
         VariablePat
       ),
   )
+import Prelude hiding (lookup)
 
 -- The state of the interpreter between any two statements.
-newtype VarState = VarState {variables :: Map String Value}
+newtype VarState = VarState {variables :: Map String (IORef Value)}
 
 -- The initial state of the interpreter, immediately after startup.
 initState :: VarState
@@ -76,6 +80,42 @@ data Value
     -- evaluated when called.
     LambdaVal Pattern Expression
   deriving (Show)
+
+-- A computation that might access or change any variables in the
+-- interpreter, and that might throw an exception rather than
+-- completing.
+type Interp a = ExceptT Value (StateT VarState IO) a
+
+-- Runs an IO action in the Interp monad.
+interpRun :: IO a -> Interp a
+interpRun = lift . lift
+
+-- Gets the current set of all defined variables in scope.
+interpVars :: Interp VarState
+interpVars = lift get
+
+-- Gets a reference to the variable with the given name. Throws an
+-- exception if no variable with the given name exists.
+interpGetRef :: String -> Interp (IORef Value)
+interpGetRef name = do
+  vars <- interpVars
+  let refMaybe = lookup name $ variables vars
+  case refMaybe of
+    Just ref -> pure ref
+    Nothing -> throwE $ StringVal ("Undefined variable " ++ name)
+
+-- Gets the value of the variable with the given name.
+interpGetVar :: String -> Interp Value
+interpGetVar name = do
+  ref <- interpGetRef name
+  interpRun $ readIORef ref
+
+-- Sets the value of the variable with the given name to the given
+-- Value.
+interpSetVar :: String -> Value -> Interp ()
+interpSetVar name value = do
+  ref <- interpGetRef name
+  interpRun $ writeIORef ref value
 
 -- Let's define that lambdas are never equal to one another; this
 -- makes a lot of things much simpler, and doesn't often have any real
@@ -100,7 +140,7 @@ toDouble (LambdaVal pat body) = undefined
 -- Evaluates an expression, which may have side effects on the program
 -- state (hence the StateT), or arbitrary side effects on the real
 -- world (hence the IO).
-evalExpression :: Expression -> StateT VarState IO Value
+evalExpression :: Expression -> Interp Value
 evalExpression e = case e of
   Add l r -> undefined
   Sub l r -> undefined
@@ -134,13 +174,13 @@ evalBinop ::
   (Value -> Value -> Value) ->
   Expression ->
   Expression ->
-  StateT VarState IO Value
+  Interp Value
 evalBinop op l r = do
   l <- evalExpression l
   r <- evalExpression r
   pure $ op l r
 
-callFn :: Expression -> Expression -> StateT VarState IO Value
+callFn :: Expression -> Expression -> Interp Value
 callFn l r = do
   fn <- evalExpression l
   arg <- evalExpression r

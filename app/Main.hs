@@ -1,6 +1,7 @@
 module Main where
 
-import Control.Monad.State (runStateT)
+import Control.Monad.Trans.Except (runExceptT)
+import Control.Monad.Trans.State (runStateT)
 import Lib (VarState, initState, interpret)
 
 main :: IO ()
@@ -12,5 +13,8 @@ main = do
 -- state.
 repl :: VarState -> IO ()
 repl s = do
-  ((), nextState) <- runStateT interpret s
+  (result, nextState) <- runStateT (runExceptT interpret) s
+  case result of
+    Left err -> print err
+    Right () -> pure ()
   repl nextState
