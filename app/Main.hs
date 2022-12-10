@@ -15,6 +15,6 @@ repl :: VarState -> IO ()
 repl s = do
   (result, nextState) <- runStateT (runExceptT interpret) s
   case result of
-    Left err -> print err
+    Left err -> putStrLn $ "Unhandled exception: " ++ show err
     Right () -> pure ()
   repl nextState

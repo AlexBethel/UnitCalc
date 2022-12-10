@@ -79,7 +79,13 @@ data Value
     -- parameters, and the second is the body of the function to be
     -- evaluated when called.
     LambdaVal Pattern Expression
-  deriving (Show)
+
+instance Show Value where
+  show (IntVal i) = show i
+  show (DoubleVal d) = show d
+  show (StringVal s) = show s
+  show (BoolVal b) = show b
+  show (LambdaVal p e) = "<lambda>"
 
 -- A computation that might access or change any variables in the
 -- interpreter, and that might throw an exception rather than
@@ -142,7 +148,7 @@ toDouble (LambdaVal pat body) = undefined
 -- world (hence the IO).
 evalExpression :: Expression -> Interp Value
 evalExpression e = case e of
-  Add l r -> undefined
+  Add l r -> throwE (StringVal "unimplemented")
   Sub l r -> undefined
   Mul l r -> undefined
   Div l r -> undefined
