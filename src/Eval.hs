@@ -1,7 +1,7 @@
 -- Expression evaluation functions.
 
--- TODO: Deal with all `undefined`s here; the final program should
--- contain zero.
+{-# LANGUAGE RankNTypes #-}
+
 module Eval
   ( evalExpression,
     Value,
@@ -137,6 +137,8 @@ unimplemented = throwE (StringVal "not yet implemented")
 instance Eq Value where
   (IntVal l) == (IntVal r) = l == r
   (DoubleVal l) == (DoubleVal r) = l == r
+  (IntVal l) == (DoubleVal r) = fromInteger l == r
+  (DoubleVal l) == (IntVal r) = l == fromInteger r
   (StringVal l) == (StringVal r) = l == r
   (BoolVal l) == (BoolVal r) = l == r
   (LambdaVal _ _) == (LambdaVal _ _) = False
@@ -151,15 +153,18 @@ toDouble (BoolVal b) = unimplemented
 toDouble (StringVal s) = unimplemented
 toDouble (LambdaVal pat body) = unimplemented
 
--- Evaluates an expression, which may have side effects on the program
--- state (hence the StateT), or arbitrary side effects on the real
--- world (hence the IO).
+-- Evaluates an expression to get a value.
 evalExpression :: Expression -> Interp Value
 evalExpression e = case e of
-  Add l r -> unimplemented
-  Sub l r -> unimplemented
-  Mul l r -> unimplemented
-  Div l r -> unimplemented
+  Add l r -> runNumOp (+) l r
+  Sub l r -> runNumOp (-) l r
+  Mul l r -> runNumOp (*) l r
+  Div l r -> do
+    lv <- toDouble =<< evalExpression l
+    rv <- toDouble =<< evalExpression r
+    if rv == 0
+      then throwE $ StringVal "divide by zero"
+      else return $ DoubleVal (lv / rv)
   Mod l r -> unimplemented
   Pow l r -> unimplemented
   Equ l r -> unimplemented
@@ -173,6 +178,7 @@ evalExpression e = case e of
   Minus e -> unimplemented
   Plus e -> evalExpression e
   Call fn arg -> callFn fn arg
+  Tuple [elem] -> evalExpression elem
   Tuple elems -> unimplemented
   Variable name -> unimplemented
   Literal lit -> case lit of
@@ -184,15 +190,35 @@ evalExpression e = case e of
   Sequence l r -> unimplemented
 
 -- Evaluate a pure binary operation in the `StateT VarState IO` monad.
-evalBinop ::
-  (Value -> Value -> Value) ->
+numOp ::
+  (forall a. Num a => (a -> a -> a)) ->
+  Value ->
+  Value ->
+  Interp Value
+numOp fn l r =
+  case (l, r) of
+    (IntVal ln, IntVal rn) -> pure $ IntVal (fn ln rn)
+    (IntVal ln, DoubleVal rn) -> pure $ DoubleVal (fn (fromInteger ln) rn)
+    (DoubleVal ln, IntVal rn) -> pure $ DoubleVal (fn ln (fromInteger rn))
+    (DoubleVal ln, DoubleVal rn) -> pure $ DoubleVal (fn ln rn)
+    _ ->
+      throwE
+        ( StringVal $
+            "Unsupported operands: "
+              ++ show l
+              ++ ", "
+              ++ show r
+        )
+
+runNumOp ::
+  (forall a. Num a => (a -> a -> a)) ->
   Expression ->
   Expression ->
   Interp Value
-evalBinop op l r = do
-  l <- evalExpression l
-  r <- evalExpression r
-  pure $ op l r
+runNumOp fn l r = do
+  lv <- evalExpression l
+  rv <- evalExpression r
+  numOp fn lv rv
 
 callFn :: Expression -> Expression -> Interp Value
 callFn l r = do
