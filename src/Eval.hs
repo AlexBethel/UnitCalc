@@ -1,5 +1,4 @@
 -- Expression evaluation functions.
-
 {-# LANGUAGE RankNTypes #-}
 
 module Eval
@@ -165,10 +164,24 @@ evalExpression e = case e of
     if rv == 0
       then throwE $ StringVal "divide by zero"
       else return $ DoubleVal (lv / rv)
-  Mod l r -> unimplemented
+  Mod l r -> do
+    lv <- evalExpression l
+    rv <- evalExpression r
+    case (lv, rv) of
+      (IntVal l, IntVal r) -> pure $ IntVal (l `mod` r)
+      _ -> do
+        l <- toDouble lv
+        r <- toDouble rv
+        pure $ DoubleVal (l - fromInteger (truncate (l / r)) * r)
   Pow l r -> unimplemented
-  Equ l r -> unimplemented
-  Neq l r -> unimplemented
+  Equ l r -> do
+    lv <- evalExpression l
+    rv <- evalExpression r
+    pure $ BoolVal (lv == rv)
+  Neq l r -> do
+    lv <- evalExpression l
+    rv <- evalExpression r
+    pure $ BoolVal (lv /= rv)
   Lt l r -> unimplemented
   Leq l r -> unimplemented
   Gt l r -> unimplemented
@@ -180,7 +193,7 @@ evalExpression e = case e of
   Call fn arg -> callFn fn arg
   Tuple [elem] -> evalExpression elem
   Tuple elems -> unimplemented
-  Variable name -> unimplemented
+  Variable name -> interpGetVar name
   Literal lit -> case lit of
     StrLiteral x -> pure (StringVal x)
     IntLiteral x -> pure (IntVal x)
