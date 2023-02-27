@@ -19,6 +19,7 @@ import Control.Monad.Trans.Except (ExceptT, catchE, throwE)
 import Data.IORef (IORef, readIORef, writeIORef)
 import Data.Map.Strict (Map, empty, lookup)
 import Data.Ratio (denominator, numerator)
+import GHC.Float (powerDouble)
 import Parser
   ( Expression
       ( Add,
@@ -173,7 +174,10 @@ evalExpression e = case e of
         l <- toDouble lv
         r <- toDouble rv
         pure $ DoubleVal (l - fromInteger (truncate (l / r)) * r)
-  Pow l r -> unimplemented
+  Pow l r -> do
+    lv <- evalExpression l
+    rv <- evalExpression r
+    valPow lv rv
   Equ l r -> do
     lv <- evalExpression l
     rv <- evalExpression r
@@ -232,6 +236,18 @@ runNumOp fn l r = do
   lv <- evalExpression l
   rv <- evalExpression r
   numOp fn lv rv
+
+valPow :: Value -> Value -> Interp Value
+valPow l r | l == IntVal 0 && r == IntVal 0 = throwE (StringVal "undefined form 0 ^ 0")
+valPow (IntVal l) (IntVal r) = pure $ IntVal (l ^ r)
+valPow (DoubleVal l) (IntVal r) = pure $ DoubleVal (l ^ r)
+valPow l r = do
+  l <- toDouble l
+  r <- toDouble r
+  let res = powerDouble l r
+   in if isNaN res
+        then throwE (StringVal "complex numbers unimplemented")
+        else pure $ DoubleVal (powerDouble l r)
 
 callFn :: Expression -> Expression -> Interp Value
 callFn l r = do

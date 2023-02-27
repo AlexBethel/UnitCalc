@@ -372,10 +372,10 @@ expCompare =
         try
         [ Equ <$ word "==",
           Neq <$ word "!=",
-          Lt <$ word "<",
           Leq <$ word "<=",
-          Gt <$ word ">",
-          Geq <$ word ">="
+          Lt <$ word "<",
+          Geq <$ word ">=",
+          Gt <$ word ">"
         ]
     )
     AssocLeft

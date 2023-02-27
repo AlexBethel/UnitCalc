@@ -21,6 +21,7 @@ interpret = do
     hFlush stdout
     getLine
   let parsed = runParser (parseExpression <* eof) () "<stdin>" text
+  liftIO $ print parsed
   case parsed of
     Left err -> liftIO $ do
       print err
